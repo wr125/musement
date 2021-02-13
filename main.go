@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
-
-	"github.com/wr125/musement/handler"
+	"time"
 )
 
 type condition struct {
@@ -34,34 +34,29 @@ type weather struct {
 	Current  weatherSection `json:"current"`
 	Forecast forecast       `json:"forecast"`
 }
-type name struct {
-	Lat  float64 `json:"latitude"`
-	Long float64 `json:"longitude"`
-}
 type city struct {
-	Name string `json:"name"`
+	Name      string  `json:"name"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 }
 
-func getCityMusement(City string) error {
-
+func getCityMusement(cities *[]city) error {
 	url := fmt.Sprintf("https://api.musement.com/api/v3/cities")
 	method := "GET"
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		return err
 	}
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		return err
 	}
-
 	body, err := ioutil.ReadAll(res.Body)
-	defer res.Body.Close()
-	//return json.Unmarshal(body, City)
-	return (body)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(body, cities)
 }
 
 func makeWeatherAPIQuery(lat, long float64, weather *weather) error {
@@ -84,27 +79,22 @@ func makeWeatherAPIQuery(lat, long float64, weather *weather) error {
 }
 
 func main() {
+	cities := []city{}
+	err := getCityMusement(&cities)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	// TODO: get all cities from Musement API; get lat/long for those cities
-	// For example: London is lat = 51.52, long = -0.11
-	weather := weather{}
-	//getCityMusement(name.Lat,name.Long)
+	for _, city := range cities {
+		weather := weather{}
+		makeWeatherAPIQuery(city.Latitude, city.Longitude, &weather)
+		fmt.Printf("Processed city [%v] | [%v] - [%v]\n",
+			weather.Location.Name,
+			weather.Current.Condition.Text,
+			weather.Forecast.Forecastday[0].Day.Condition.Text,
+		)
+		// Don't get rate-limited!
+		time.Sleep(1 * time.Second)
 
-	makeWeatherAPIQuery(51.52, -0.11, &weather)
-
-	getCityMusement("City")
-	fmt.Printf("City", body.city)
-	fmt.Printf("Processed city [%v] | [%v] - [%v]\n",
-		weather.Location.Name,
-		weather.Current.Condition.Text,
-		weather.Forecast.Forecastday[0].Day.Condition.Text,
-	)
-	http.HandleFunc("/", handler.Index)
-	http.HandleFunc("/result", handler.Search)
-
-	fmt.Println("Server is running..")
-	http.ListenAndServe(":4000", nil)
-	fs := http.FileServer(http.Dir("./static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
-
+	}
 }
