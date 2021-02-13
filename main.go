@@ -35,11 +35,11 @@ type weather struct {
 	Forecast forecast       `json:"forecast"`
 }
 type name struct {
-	Lat  float64 `xml:"latitude"`
-	Long float64 `xml:"longitude"`
+	Lat  float64 `json:"latitude"`
+	Long float64 `json:"longitude"`
 }
 type city struct {
-	Name string
+	Name string `json:"name"`
 }
 
 func getCityMusement(City string) error {
