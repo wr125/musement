@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"encoding/xml"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -40,21 +39,29 @@ type name struct {
 	Long float64 `xml:"longitude"`
 }
 type city struct {
-	Name name `xml:"name"`
+	Name string
 }
 
-func getCityMusement(Name *name) error {
+func getCityMusement(City string) error {
 
 	url := fmt.Sprintf("https://api.musement.com/api/v3/cities")
 	method := "GET"
+	client := &http.Client{}
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		fmt.Println(err)
 		return nil
 	}
-	body, err := ioutil.ReadAll(req.Body)
-	defer req.Body.Close()
-	return xml.Unmarshal(body, &Name)
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	defer res.Body.Close()
+	//return json.Unmarshal(body, City)
+	return (body)
 }
 
 func makeWeatherAPIQuery(lat, long float64, weather *weather) error {
@@ -85,6 +92,8 @@ func main() {
 
 	makeWeatherAPIQuery(51.52, -0.11, &weather)
 
+	getCityMusement("City")
+	fmt.Printf("City", body.city)
 	fmt.Printf("Processed city [%v] | [%v] - [%v]\n",
 		weather.Location.Name,
 		weather.Current.Condition.Text,
