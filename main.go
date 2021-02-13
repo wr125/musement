@@ -2,10 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	"encoding/xml"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/wr125/musement/handler"
 )
@@ -35,26 +36,29 @@ type weather struct {
 	Current  weatherSection `json:"current"`
 	Forecast forecast       `json:"forecast"`
 }
-type name struct {
-	Lat  float64 `xml:"latitude"`
-	Long float64 `xml:"longitude"`
-}
 type city struct {
-	Name name `xml:"name"`
+	Name      string  `json:"name"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 }
 
-func getCityMusement(Name *name) error {
-
+func getCityMusement(cities *[]city) error {
 	url := fmt.Sprintf("https://api.musement.com/api/v3/cities")
 	method := "GET"
+	client := &http.Client{}
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		return err
 	}
-	body, err := ioutil.ReadAll(req.Body)
-	defer req.Body.Close()
-	return xml.Unmarshal(body, &Name)
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(body, cities)
 }
 
 func makeWeatherAPIQuery(lat, long float64, weather *weather) error {
@@ -77,19 +81,24 @@ func makeWeatherAPIQuery(lat, long float64, weather *weather) error {
 }
 
 func main() {
+	cities := []city{}
+	err := getCityMusement(&cities)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	// TODO: get all cities from Musement API; get lat/long for those cities
-	// For example: London is lat = 51.52, long = -0.11
-	weather := weather{}
-	//getCityMusement(name.Lat,name.Long)
+	for _, city := range cities {
+		weather := weather{}
+		makeWeatherAPIQuery(city.Latitude, city.Longitude, &weather)
+		fmt.Printf("Processed city [%v] | [%v] - [%v]\n",
+			weather.Location.Name,
+			weather.Current.Condition.Text,
+			weather.Forecast.Forecastday[0].Day.Condition.Text,
+		)
+		// Don't get rate-limited!
+		time.Sleep(1 * time.Second)
+	}
 
-	makeWeatherAPIQuery(51.52, -0.11, &weather)
-
-	fmt.Printf("Processed city [%v] | [%v] - [%v]\n",
-		weather.Location.Name,
-		weather.Current.Condition.Text,
-		weather.Forecast.Forecastday[0].Day.Condition.Text,
-	)
 	http.HandleFunc("/", handler.Index)
 	http.HandleFunc("/result", handler.Search)
 
