@@ -78,6 +78,11 @@ func makeWeatherAPIQuery(lat, long float64, weather *weather) error {
 	return json.Unmarshal(body, weather)
 }
 
+//FormattedOutput test
+func FormattedOutput(weather) {
+
+}
+
 func main() {
 	cities := []city{}
 	err := getCityMusement(&cities)
