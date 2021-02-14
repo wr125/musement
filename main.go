@@ -40,11 +40,10 @@ type city struct {
 	Longitude float64 `json:"longitude"`
 }
 
-func getCityMusement(cities *[]city) error {
-	url := fmt.Sprintf("https://api.musement.com/api/v3/cities")
+func getCityMusement(musementAPIURL string, cities *[]city) error {
 	method := "GET"
 	client := &http.Client{}
-	req, err := http.NewRequest(method, url, nil)
+	req, err := http.NewRequest(method, musementAPIURL, nil)
 	if err != nil {
 		return err
 	}
@@ -59,8 +58,8 @@ func getCityMusement(cities *[]city) error {
 	return json.Unmarshal(body, cities)
 }
 
-func makeWeatherAPIQuery(lat, long float64, weather *weather) error {
-	url := fmt.Sprintf("http://api.weatherapi.com/v1/forecast.json?key=8c392dfae4eb40b0abd132405210902&q=%v,%v&days=1", lat, long)
+func makeWeatherAPIQuery(weatherAPIURL string, lat, long float64, weather *weather) error {
+	url := fmt.Sprintf("%v/v1/forecast.json?key=8c392dfae4eb40b0abd132405210902&q=%v,%v&days=1", weatherAPIURL, lat, long)
 	method := "GET"
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, nil)
@@ -78,28 +77,32 @@ func makeWeatherAPIQuery(lat, long float64, weather *weather) error {
 	return json.Unmarshal(body, weather)
 }
 
-//FormattedOutput test
-func FormattedOutput(weather) {
-
-}
-
-func main() {
+func run(musementAPIURL, weatherAPIURL string, print func(s string)) {
 	cities := []city{}
-	err := getCityMusement(&cities)
+	err := getCityMusement(musementAPIURL, &cities)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for _, city := range cities {
 		weather := weather{}
-		makeWeatherAPIQuery(city.Latitude, city.Longitude, &weather)
-		fmt.Printf("Processed city [%v] | [%v] - [%v]\n",
+		makeWeatherAPIQuery(weatherAPIURL, city.Latitude, city.Longitude, &weather)
+		output := fmt.Sprintf("Processed city [%v] | [%v] - [%v]",
 			weather.Location.Name,
 			weather.Current.Condition.Text,
 			weather.Forecast.Forecastday[0].Day.Condition.Text,
 		)
+		print(output)
 		// Don't get rate-limited!
 		time.Sleep(1 * time.Second)
 
 	}
+}
+
+func main() {
+	musementAPIURL := "https://api.musement.com/api/v3/cities"
+	weatherAPIURL := "http://api.weatherapi.com"
+	print := func(s string) { fmt.Println(s) }
+
+	run(musementAPIURL, weatherAPIURL, print)
 }
